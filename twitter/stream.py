@@ -9,8 +9,11 @@ import json
 from ssl import SSLError
 import socket
 import sys
+import os
 
 from .api import TwitterCall, wrap_response
+
+LOG_KEEPALIVE = 'TWITTER_LOG_KEEPALIVE' in os.environ
 
 class TwitterJSONIter(object):
 
@@ -44,7 +47,11 @@ class TwitterJSONIter(object):
                 raise TwitterHTTPError(e, uri, self.format, arg_data)
             # this is a non-blocking read (ie, it will return if any data is available)
             try:
-                self.buf += sock.recv(1024)
+                new_recv = sock.recv(1024)
+                if new_recv == "\r\n" and LOG_KEEPALIVE:
+                    sys.stdout.write("keepalive\n")
+                    sys.stdout.flush()
+                self.buf += new_recv
             except SSLError as e:
                 if (not self.block) and (e.errno == 2):
                     # Apparently this means there was nothing in the socket buf
